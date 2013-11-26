@@ -36,6 +36,7 @@ int main(int argc, char **argv)
       fprintf(stderr, "The size of the file exceeds the capacity of database.\n");
 	  exit(-1);
 	}
+	memset(value, 0, DAT_LEN);
     bytes = fread(value, 1, DAT_LEN, f1);
     SHA1_Init(&c);
 	SHA1_Update(&c, value, bytes);

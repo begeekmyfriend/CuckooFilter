@@ -13,7 +13,7 @@
 #define ASSOC_WAYS  4  // 4-way association.
 #define SLOT_NUM  (NVROM_SIZE / SECTOR_SIZE)
 #define BUCKET_NUM  (SLOT_NUM / ASSOC_WAYS)
-#define make_align(addr, size)  ((((uint32_t)(addr)) + (size) - 1) & ~((size) - 1))
+#define force_align(addr, size)  ((((uint32_t)(addr)) + (size) - 1) & ~((size) - 1))
 #define cuckoo_hash1(key)  (((uint8_t *)(key))[0] & 0x7)
 #define cuckoo_hash2(key)  (((uint8_t *)(key))[19] & 0x7)
 #define set_tag_lsb(key, tag)  ((tag) = (((((uint8_t *)(key))[1] & 0x3f) << 8) | (((uint8_t *)(key))[0] & 0xff)))

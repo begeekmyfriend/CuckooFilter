@@ -215,7 +215,7 @@ void db_init()
   nvrom_base_addr = (uint8_t *)malloc(NVROM_SIZE + SECTOR_SIZE);
   if (nvrom_base_addr == NULL)
 	exit(-1);
-  nvrom_base_addr = (uint8_t *)make_align(nvrom_base_addr, SECTOR_SIZE);
+  nvrom_base_addr = (uint8_t *)force_align(nvrom_base_addr, SECTOR_SIZE);
 
   hash_slots = (struct hash_slot_cache *)malloc(SLOT_NUM * sizeof(struct hash_slot_cache));
   if (hash_slots == NULL)
