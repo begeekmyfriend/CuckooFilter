@@ -31,29 +31,29 @@ int main(int argc, char **argv)
   
   // Put read_file into log on flash.
   do {
-	if (i >= NKEY)
-	{
+    if (i >= NKEY)
+    {
       fprintf(stderr, "The size of the file exceeds the capacity of database.\n");
-	  exit(-1);
-	}
-	memset(value, 0, DAT_LEN);
+      exit(-4);
+    }
+    memset(value, 0, DAT_LEN);
     bytes = fread(value, 1, DAT_LEN, f1);
     SHA1_Init(&c);
-	SHA1_Update(&c, value, bytes);
-	SHA1_Final(sha1_key[i], &c);
-	put(sha1_key[i], value);
-	i++;
+    SHA1_Update(&c, value, bytes);
+    SHA1_Final(sha1_key[i], &c);
+    put(sha1_key[i], value);
+    i++;
   } while (bytes == DAT_LEN);
   
   // Get logs on flash and write them into a new file.
   for (j = 0; j < i; j++)
   {
     v = get(sha1_key[j]);
-	if (v != NULL)
-	{
+    if (v != NULL)
+    {
       memcpy(value, v, DAT_LEN);
-	  fwrite(value, 1, DAT_LEN, f2);
-	}
+      fwrite(value, 1, DAT_LEN, f2);
+    }
   }
   
   fclose(f1);

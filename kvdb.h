@@ -9,17 +9,18 @@
 
 #define SECTOR_SIZE  (1 << 9)  // 4K bits
 #define NVROM_SIZE  (1 << 14)  // 128K bits
-#define DAT_LEN	(SECTOR_SIZE - 20)  // minus sha1 size
+#define DAT_LEN  (SECTOR_SIZE - 20)  // minus sha1 size
 #define ASSOC_WAYS  4  // 4-way association.
 #define SLOT_NUM  (NVROM_SIZE / SECTOR_SIZE)
 #define BUCKET_NUM  (SLOT_NUM / ASSOC_WAYS)
 #define force_align(addr, size)  ((((uint32_t)(addr)) + (size) - 1) & ~((size) - 1))
-#define cuckoo_hash1(key)  (((uint8_t *)(key))[0] & 0x7)
-#define cuckoo_hash2(key)  (((uint8_t *)(key))[19] & 0x7)
-#define set_tag_lsb(key, tag)  ((tag) = (((((uint8_t *)(key))[1] & 0x3f) << 8) | (((uint8_t *)(key))[0] & 0xff)))
-#define set_tag_msb(key, tag)  ((tag) = (((((uint8_t *)(key))[19] & 0x3f) << 8) | (((uint8_t *)(key))[18] & 0xff)))
-#define key_match_lsb(key, tag)  ((tag) == (((((uint8_t *)(key))[1] & 0x3f) << 8) | (((uint8_t *)(key))[0] & 0xff)))
-#define key_match_msb(key, tag)  ((tag) == (((((uint8_t *)(key))[19] & 0x3f) << 8) | (((uint8_t *)(key))[18] & 0xff)))
+#define tag2idx(tag)  ((tag) & 0x7)
+#define cuckoo_hash_lsb(key)  (((uint8_t *)(key))[1] & 0x7)
+#define cuckoo_hash_msb(key)  (((uint8_t *)(key))[3] & 0x7)
+#define set_tag_lsb(key, tag)  ((tag) = (((((uint8_t *)(key))[0] & 0x3f) << 8) | (((uint8_t *)(key))[1] & 0xff)))
+#define set_tag_msb(key, tag)  ((tag) = (((((uint8_t *)(key))[2] & 0x3f) << 8) | (((uint8_t *)(key))[3] & 0xff)))
+#define key_match_lsb(key, tag)  ((tag) == (((((uint8_t *)(key))[0] & 0x3f) << 8) | (((uint8_t *)(key))[1] & 0xff)))
+#define key_match_msb(key, tag)  ((tag) == (((((uint8_t *)(key))[2] & 0x3f) << 8) | (((uint8_t *)(key))[3] & 0xff)))
 
 // Flash driver interface.
 #define flash_align(addr)  (!((uint32_t)(addr) & (SECTOR_SIZE - 1)))
@@ -32,7 +33,7 @@
     for (__i = 0; __i < SECTOR_SIZE; __i++) { \
       *(volatile uint8_t *)__addr = 0xff; \
       __addr++; \
-	} \
+    } \
   } while (0)
 
 // The log entries store key-value pairs on flash and
