@@ -24,12 +24,32 @@ static inline uint16_t next_entry_offset()
   assert(flash_align(append_addr));
   if (++log_entries * sizeof(struct log_entry) >= NVROM_SIZE)
   {
-    --log_entries;
+    //--log_entries;
     printf("Out of flash memory!\n");
     //return -1;
     exit(-1);
   }
   return (uint16_t)(append_addr - (uint32_t)nvrom_base_addr);
+}
+
+void list_all_keys()
+{
+  struct hash_slot_cache *slot;
+  uint32_t i, j;
+
+  printf("List all keys in hash table (key/value):\n");
+  for (i = 0; i < BUCKET_NUM; i++)
+  {
+    slot = hash_buckets[i];
+    printf("bucket[%u]:", i);
+    for (j = 0; j < ASSOC_WAY; j++)
+    {
+      printf("\t%04x/%x/%08x", slot[j].tag, slot[j].status, slot[j].offset);
+    }
+    putchar('\n');
+  }
+
+  return;
 }
 
 uint8_t *get(uint8_t *key)
@@ -45,7 +65,7 @@ uint8_t *get(uint8_t *key)
   
   // Filter the key and verify if it exists.
   hash_slot = hash_buckets[tag2idx(tag[0])];
-  for (i = 0; i < ASSOC_WAYS; i++) 
+  for (i = 0; i < ASSOC_WAY; i++) 
   {
     if (key_match_msb(key, hash_slot[i].tag))
     {
@@ -61,10 +81,10 @@ uint8_t *get(uint8_t *key)
       //}
     }
   }
-  if (i == ASSOC_WAYS)
+  if (i == ASSOC_WAY)
   {
     hash_slot = hash_buckets[tag2idx(tag[1])];
-    for (j = 0; j < ASSOC_WAYS; j++)
+    for (j = 0; j < ASSOC_WAY; j++)
     {
       if (key_match_lsb(key, hash_slot[j].tag))
       {
@@ -80,7 +100,7 @@ uint8_t *get(uint8_t *key)
       //  return NULL;
       //}
     }
-    if (j == ASSOC_WAYS)
+    if (j == ASSOC_WAY)
     {
       printf("Key not exists!\n");
       return NULL;
@@ -124,7 +144,7 @@ void put(uint8_t *key, uint8_t *value)
 
   // Insert new key into hash buckets.
   hash_slot = hash_buckets[tag2idx(tag[0])];
-  for (i = 0; i < ASSOC_WAYS; i++)
+  for (i = 0; i < ASSOC_WAY; i++)
   {
     if (hash_slot[i].status == AVAILIBLE)
     {
@@ -135,21 +155,21 @@ void put(uint8_t *key, uint8_t *value)
     }
   }
 
-  if (i == ASSOC_WAYS)
+  if (i == ASSOC_WAY)
   {
     hash_slot = hash_buckets[tag2idx(tag[1])];
-    for (j = 0; j < ASSOC_WAYS; j++)
+    for (j = 0; j < ASSOC_WAY; j++)
     {
       if (hash_slot[j].status == AVAILIBLE)
       {
         hash_slot[j].status = OCCUPIED;
-        set_tag_lsb(key, hash_slot[i].tag);
+        set_tag_lsb(key, hash_slot[j].tag);
         hash_slot[j].offset = offset;
         break;
       }
     }
 
-    if (j == ASSOC_WAYS)
+    if (j == ASSOC_WAY)
     {
       // if hash collision, kick out the old key and
       // move it to the alternative bucket and go on inserting.
@@ -164,7 +184,7 @@ void put(uint8_t *key, uint8_t *value)
 
 KICK_OUT:
       hash_slot = hash_buckets[tag2idx(old_tag[i])];
-      for (j = 0; j < ASSOC_WAYS; j++)
+      for (j = 0; j < ASSOC_WAY; j++)
       {
         if (hash_slot[j].status == AVAILIBLE)
         {
@@ -175,7 +195,7 @@ KICK_OUT:
         }
       }
       
-      if (j == ASSOC_WAYS)
+      if (j == ASSOC_WAY)
       {
         // bucket table almost full, resize hash buckets.
         if (++alt_cnt > 128)
@@ -225,12 +245,13 @@ void db_init()
   hash_slots = (struct hash_slot_cache *)malloc(SLOT_NUM * sizeof(struct hash_slot_cache));
   if (hash_slots == NULL)
     exit(-1);
+  memset(hash_slots, 0, SLOT_NUM * sizeof(struct hash_slot_cache));
 
   hash_buckets = (struct hash_slot_cache **)malloc(BUCKET_NUM * sizeof(struct hash_slot_cache *));
   if (hash_slots == NULL)
     exit(-1);
   for (i = 0; i < BUCKET_NUM; i++)
-    hash_buckets[i] = &hash_slots[i * ASSOC_WAYS];
+    hash_buckets[i] = &hash_slots[i * ASSOC_WAY];
 
   return;
 }

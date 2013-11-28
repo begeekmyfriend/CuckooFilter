@@ -10,9 +10,9 @@
 #define SECTOR_SIZE  (1 << 9)  // 4K bits
 #define NVROM_SIZE  (1 << 14)  // 128K bits
 #define DAT_LEN  (SECTOR_SIZE - 20)  // minus sha1 size
-#define ASSOC_WAYS  4  // 4-way association.
+#define ASSOC_WAY  4  // 4-way association.
 #define SLOT_NUM  (NVROM_SIZE / SECTOR_SIZE)
-#define BUCKET_NUM  (SLOT_NUM / ASSOC_WAYS)
+#define BUCKET_NUM  (SLOT_NUM / ASSOC_WAY)
 #define force_align(addr, size)  ((((uint32_t)(addr)) + (size) - 1) & ~((size) - 1))
 #define tag2idx(tag)  ((tag) & 0x7)
 #define cuckoo_hash_lsb(key)  (((uint8_t *)(key))[1] & 0x7)
