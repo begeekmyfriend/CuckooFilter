@@ -1,4 +1,4 @@
-kvdb
-====
+Cuckoo DB
+=========
 
-A mini key-value database store on flash memory.
+A mini key-value storage on flash memory using cuckoo hashing.
