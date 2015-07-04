@@ -5,7 +5,7 @@
 #ifndef _CUCKOO_DB_H_
 #define _CUCKOO_DB_H_
 
-#define CUKOO_DBG
+//#define CUKOO_DBG
 
 /* Configuration */
 #define SECTOR_SIZE             (1 << 9)  /* 4K bits */
