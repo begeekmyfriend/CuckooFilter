@@ -22,8 +22,8 @@ void usage(const char *s)
 
 static void dump_sha1_key(uint8_t *sha1)
 {
-        static const char str[] = "0123456789abcdef";
         int i;
+        static const char str[] = "0123456789abcdef";
 
         printf("sha1: ");
         for (i = 19; i >= 0; i--) {
@@ -77,17 +77,17 @@ key_verify(uint8_t *key, uint32_t offset)
 
 uint8_t *get(uint8_t *key)
 {
-        uint8_t tag[2], *read_addr;
+        int i, j;
+        uint8_t *read_addr;
+        uint32_t tag[2], offset;
         static uint8_t value[DAT_LEN];
-        uint32_t offset;
-        uint32_t i, j;
         struct hash_slot_cache *hash_slot;
 
         tag[0] = cuckoo_hash_lsb(key);
         tag[1] = cuckoo_hash_msb(key);
 
 #ifdef CUKOO_DBG
-        printf("get t1:%x t2:%x\n", tag[0], tag[1]);
+        printf("get t0:%x t1:%x\n", tag[0], tag[1]);
         dump_sha1_key(key);
 #endif
 
@@ -133,7 +133,8 @@ uint8_t *get(uint8_t *key)
 
 void put(uint8_t *key, uint8_t *value)
 {
-        uint8_t tag[2], old_tag[2], *append_addr;
+        uint8_t *append_addr;
+        uint32_t tag[2], old_tag[2];
         uint32_t offset, old_offset;
         uint32_t i, j, k, alt_cnt;
         struct hash_slot_cache *hash_slot;
@@ -148,7 +149,7 @@ void put(uint8_t *key, uint8_t *value)
         }
 
 #ifdef CUKOO_DBG
-        printf("put offset:%x t1:%x t2:%x\n", offset, tag[0], tag[1]);
+        printf("put offset:%x t0:%x t1:%x\n", offset, tag[0], tag[1]);
         dump_sha1_key(key);
 #endif
 
@@ -203,14 +204,14 @@ KICK_OUT:
                                 /* buckets almost full, need to resize hash table. */
                                 if (++alt_cnt > 128) {
                                         if (k == ASSOC_WAY - 1) {
-                                                fprintf(stderr, "Hash table almost full and needs to be resized!\n");
+                                                fprintf(stderr, "Hash table is almost full and needs to be resized!\n");
                                                 // return;
                                                 exit(-1);
                                         } else {
                                                 k++;
                                         }
                                 }
-                                uint8_t tmp_tag = hash_slot[k].tag;
+                                uint32_t tmp_tag = hash_slot[k].tag;
                                 uint32_t tmp_offset = hash_slot[k].offset;
                                 hash_slot[k].tag = old_tag[i ^ 1];
                                 hash_slot[k].offset = old_offset;
