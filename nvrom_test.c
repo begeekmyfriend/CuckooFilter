@@ -3,10 +3,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "cuckoo_db.h"
+#include "cuckoo_hash.h"
 #include "mozilla-sha1/sha1.h"
 
-#define NKEY SLOT_NUM
+#define NKEY (NVROM_SIZE / SECTOR_SIZE)
 
 int main(int argc, char **argv)
 {
@@ -16,10 +16,10 @@ int main(int argc, char **argv)
         int bytes, i, j;
         FILE *f1, *f2;
 
-        db_init();
+        cuckoo_hash_init();
 
         if (argc < 3) {
-                usage("./cuckoo_db read_file write_file");
+                usage("./cuckoo_hash read_file write_file");
                 exit(-1);
         }
 
@@ -48,13 +48,16 @@ int main(int argc, char **argv)
                 SHA1_Init(&c);
                 SHA1_Update(&c, value, bytes);
                 SHA1_Final(sha1_key[i], &c);
-                put(sha1_key[i], value);
+                if (cuckoo_hash_put(sha1_key[i], value) == -1) {
+                        cuckoo_rehash();
+                        cuckoo_hash_put(sha1_key[i], value);
+                }
                 i++;
         } while (bytes == DAT_LEN);
 
         /* Get logs on flash and write them into a new file. */
         for (j = 0; j < i; j++) {
-                v = get(sha1_key[j]);
+                v = cuckoo_hash_get(sha1_key[j]);
                 if (v != NULL) {
                         memcpy(value, v, DAT_LEN);
                         fwrite(value, 1, DAT_LEN, f2);

@@ -2,8 +2,8 @@
  * Copyright (C) 2015, Leo Ma <begeekmyfriend@gmail.com>
  */
 
-#ifndef _CUCKOO_DB_H_
-#define _CUCKOO_DB_H_
+#ifndef _CUCKOO_HASH_H_
+#define _CUCKOO_HASH_H_
 
 //#define CUKOO_DBG
 
@@ -12,13 +12,11 @@
 #define NVROM_SIZE              (1 << 15)  /* 256 bits */
 #define DAT_LEN                 (SECTOR_SIZE - 20)  /* minus sha1 size */
 #define ASSOC_WAY               (4)  /* 4-way association */
-#define SLOT_NUM                (NVROM_SIZE / SECTOR_SIZE)
-#define BUCKET_NUM              (SLOT_NUM / ASSOC_WAY)
 
-/* Cuckoo hashing */
+/* Cuckoo hash */
 #define force_align(addr, size) ((void *)((((uintptr_t)(addr)) + (size) - 1) & ~((size) - 1)))
-#define cuckoo_hash_lsb(key)    (((size_t *)(key))[0] & (BUCKET_NUM - 1))
-#define cuckoo_hash_msb(key)    (((size_t *)(key))[1] & (BUCKET_NUM - 1))
+#define cuckoo_hash_lsb(key, count)    (((size_t *)(key))[0] & (count - 1))
+#define cuckoo_hash_msb(key, count)    (((size_t *)(key))[1] & (count - 1))
 
 /* Flash driver interfaces. */
 #define flash_align(addr)  (!((uintptr_t)(addr) & (SECTOR_SIZE - 1)))
@@ -53,9 +51,10 @@ struct hash_slot_cache {
         uint32_t offset;  /* offset on flash memory */
 };
 
-void put(uint8_t *key, uint8_t *value);
-uint8_t *get(uint8_t *key);
-void db_init(void);
+int cuckoo_hash_init(void);
+void cuckoo_rehash(void);
+uint8_t *cuckoo_hash_get(uint8_t *key);
+int cuckoo_hash_put(uint8_t *key, uint8_t *value);
 void usage(const char *str);
 
-#endif /* _CUCKOO_DB_H_ */
+#endif /* _CUCKOO_HASH_H_ */
