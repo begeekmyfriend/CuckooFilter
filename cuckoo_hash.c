@@ -192,10 +192,9 @@ KICK_OUT:
                         }
 
                         if (j == ASSOC_WAY) {
-                                /* buckets almost full, need to resize hash table. */
                                 if (++alt_cnt > 128) {
                                         if (k == ASSOC_WAY - 1) {
-                                                fprintf(stderr, "Hash table is almost full and needs to be resized!\n");
+                                                /* Hash table is almost full and needs to be resized */
                                                 return -1;
                                         } else {
                                                 k++;
@@ -254,22 +253,18 @@ void cuckoo_rehash(void)
         int i;
         uint32_t entries, offset;
         uint8_t *read_addr, key[20];
-        // struct hash_slot_cache *old_slots = hash_slots;
-        // struct hash_slot_cache **old_buckets = hash_buckets;
-
-        free(hash_slots);
-        free(hash_buckets);
 
         /* Reallocate hash slots */
         hash_slot_num *= 2;
-        hash_slots = calloc(hash_slot_num, sizeof(struct hash_slot_cache));
+        hash_slots = realloc(hash_slots, hash_slot_num * sizeof(struct hash_slot_cache));
         if (hash_slots == NULL) {
                 return;
         }
+        memset(hash_slots, 0, hash_slot_num * sizeof(struct hash_slot_cache));
 
         /* Reallocate hash buckets associated with slots */
         hash_bucket_num *= 2;
-        hash_buckets = calloc(hash_bucket_num, sizeof(struct hash_slot_cache *));
+        hash_buckets = realloc(hash_buckets, hash_bucket_num * sizeof(struct hash_slot_cache *));
         if (hash_buckets == NULL) {
                 free(hash_slots);
                 return;
@@ -278,6 +273,7 @@ void cuckoo_rehash(void)
                 hash_buckets[i] = &hash_slots[i * ASSOC_WAY];
         }
 
+        /* Re-insert all entries from nvrom */
         read_addr = nvrom_base_addr;
         entries = log_entries;
         while (entries--) {
@@ -286,7 +282,6 @@ void cuckoo_rehash(void)
                         key[i] = flash_read(read_addr);
                         read_addr++;
                 }
-                /* Re-insert into hash slots */
                 hash_put(key, offset);
                 read_addr += DAT_LEN;
         }
