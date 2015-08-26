@@ -5,7 +5,7 @@
 #ifndef _CUCKOO_FILTER_H_
 #define _CUCKOO_FILTER_H_
 
-#define CUCKOO_DBG
+//#define CUCKOO_DBG
 
 /* Configuration */
 #define SECTOR_SIZE    (1 << 10)

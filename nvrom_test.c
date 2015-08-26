@@ -66,8 +66,15 @@ int main(int argc, char **argv)
                 i++;
         } while (bytes == DAT_LEN);
 
+#ifdef DEL_TEST
+        /* Deletion test */
+        for (i = 0; i < key_num; i += 2) {
+                cuckoo_filter_put(sha1_key[i], NULL);
+        }
+#endif
+
         /* Get logs on flash and write them into a new file. */
-        for (j = 0; j < i; j++) {
+        for (j = 0; j < key_num; j++) {
                 v = cuckoo_filter_get(sha1_key[j]);
                 if (v != NULL) {
                         memcpy(value, v, DAT_LEN);
