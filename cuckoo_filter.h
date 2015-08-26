@@ -2,16 +2,15 @@
  * Copyright (C) 2015, Leo Ma <begeekmyfriend@gmail.com>
  */
 
-#ifndef _CUCKOO_HASH_H_
-#define _CUCKOO_HASH_H_
+#ifndef _CUCKOO_FILTER_H_
+#define _CUCKOO_FILTER_H_
 
-//#define CUKOO_DBG
+//#define CUCKOO_DBG
 
 /* Configuration */
-#define SECTOR_SIZE             (1 << 9)  /* 4K bits */
-#define NVROM_SIZE              (1 << 15)  /* 256 bits */
-#define DAT_LEN                 (SECTOR_SIZE - 20)  /* minus sha1 size */
-#define ASSOC_WAY               (4)  /* 4-way association */
+#define SECTOR_SIZE (1 << 10)
+#define DAT_LEN     (SECTOR_SIZE - 20)  /* minus sha1 size */
+#define ASSOC_WAY   (4)  /* 4-way association */
 
 /* Cuckoo hash */
 #define force_align(addr, size) ((void *)((((uintptr_t)(addr)) + (size) - 1) & ~((size) - 1)))
@@ -51,10 +50,28 @@ struct hash_slot_cache {
         uint32_t offset;  /* offset on flash memory */
 };
 
-int cuckoo_hash_init(void);
-void cuckoo_rehash(void);
-uint8_t *cuckoo_hash_get(uint8_t *key);
-int cuckoo_hash_put(uint8_t *key, uint8_t *value);
-void usage(const char *str);
+static inline int
+is_pow_of_2(uint32_t x)
+{
+	return !(x & (x-1));
+}
 
-#endif /* _CUCKOO_HASH_H_ */
+static inline uint32_t
+next_pow_of_2(uint32_t x)
+{
+	if (is_pow_of_2(x))
+		return x;
+	x |= x>>1;
+	x |= x>>2;
+	x |= x>>4;
+	x |= x>>8;
+	x |= x>>16;
+	return x + 1;
+}
+
+int cuckoo_filter_init(size_t size);
+void cuckoo_rehash(void);
+uint8_t *cuckoo_filter_get(uint8_t *key);
+int cuckoo_filter_put(uint8_t *key, uint8_t *value);
+
+#endif /* _CUCKOO_FILTER_H_ */

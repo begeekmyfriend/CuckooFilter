@@ -1,13 +1,13 @@
-Cuckoo DB
-=========
+Cuckoo Filter
+=============
 
-A mini key-value storage on flash memory using cuckoo hash.
+A mini key-value storage filter on flash memory using cuckoo hashing.
 
 Usage
 -----
 
 ```c
-cd cuckoo_hash
+cd cuckoo_filter
 make
-./cockoo_hash input_file output_file
+./cockoo_filter input_file output_file
 ```

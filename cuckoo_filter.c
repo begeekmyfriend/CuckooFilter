@@ -8,22 +8,19 @@
 #include <string.h>
 #include <assert.h>
 
-#include "cuckoo_hash.h"
+#include "cuckoo_filter.h"
 
 static uint8_t *nvrom_base_addr;
+static uint32_t nvrom_size;
 static struct hash_slot_cache **hash_buckets;
 static struct hash_slot_cache *hash_slots;
 static uint32_t hash_slot_num;
 static uint32_t hash_bucket_num;
 static uint32_t log_entries;
 
-void usage(const char *s)
-{
-        fprintf(stderr, "usage: %s\n", s);
-}
-
 static void dump_sha1_key(uint8_t *sha1)
 {
+#ifdef CUCKOO_DBG
         int i;
         static const char str[] = "0123456789abcdef";
 
@@ -33,13 +30,14 @@ static void dump_sha1_key(uint8_t *sha1)
                 putchar(str[sha1[i] & 0xf]);
         }
         putchar('\n');
+#endif
 }
 
 static uint32_t next_entry_offset(void)
 {
         uintptr_t append_addr = (uintptr_t)nvrom_base_addr + log_entries * sizeof(struct log_entry);
         assert(flash_align(append_addr));
-        if (++log_entries * sizeof(struct log_entry) >= NVROM_SIZE) {
+        if (++log_entries * sizeof(struct log_entry) >= nvrom_size) {
                 printf("Out of flash memory!\n");
                 exit(-1);
         }
@@ -48,6 +46,7 @@ static uint32_t next_entry_offset(void)
 
 static void show_hash_slots(void)
 {
+#ifdef CUCKOO_DBG
         int i, j;
 
         printf("List all keys in hash table (key/value):\n");
@@ -59,9 +58,10 @@ static void show_hash_slots(void)
                 }
                 printf("\n");
         }
+#endif
 }
 
-static uint8_t * key_verify(uint8_t *key, uint32_t offset)
+static uint8_t *key_verify(uint8_t *key, uint32_t offset)
 {
         int i;
         uint8_t *read_addr = nvrom_base_addr + offset;
@@ -74,7 +74,7 @@ static uint8_t * key_verify(uint8_t *key, uint32_t offset)
         return read_addr;
 }
 
-uint8_t *cuckoo_hash_get(uint8_t *key)
+uint8_t *cuckoo_filter_get(uint8_t *key)
 {
         int i, j;
         uint8_t *read_addr;
@@ -85,16 +85,16 @@ uint8_t *cuckoo_hash_get(uint8_t *key)
         tag[0] = cuckoo_hash_lsb(key, hash_bucket_num);
         tag[1] = cuckoo_hash_msb(key, hash_bucket_num);
 
-#ifdef CUKOO_DBG
+#ifdef CUCKOO_DBG
         printf("get t0:%x t1:%x\n", tag[0], tag[1]);
-        dump_sha1_key(key);
 #endif
+        dump_sha1_key(key);
 
         /* Filter the key and verify if it exists. */
         hash_slot = hash_buckets[tag[0]];
         for (i = 0; i < ASSOC_WAY; i++) {
-                if (cuckoo_hash_msb(key, hash_bucket_num) == hash_slot[i].tag) {
-                        assert(hash_slot[i].status == OCCUPIED);
+                if (hash_slot[i].status == OCCUPIED &&
+                        cuckoo_hash_msb(key, hash_bucket_num) == hash_slot[i].tag) {
                         offset = hash_slot[i].offset;
                         read_addr = key_verify(key, offset);
                         if (read_addr != NULL) {
@@ -106,8 +106,8 @@ uint8_t *cuckoo_hash_get(uint8_t *key)
         if (i == ASSOC_WAY) {
                 hash_slot = hash_buckets[tag[1]];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        if (cuckoo_hash_lsb(key, hash_bucket_num) == hash_slot[j].tag) {
-                                assert(hash_slot[j].status == OCCUPIED);
+                        if (hash_slot[j].status == OCCUPIED &&
+                                cuckoo_hash_lsb(key, hash_bucket_num) == hash_slot[j].tag) {
                                 offset = hash_slot[j].offset;
                                 read_addr = key_verify(key, offset);
                                 if (read_addr != NULL) {
@@ -118,7 +118,7 @@ uint8_t *cuckoo_hash_get(uint8_t *key)
                 if (j == ASSOC_WAY) {
                         printf("Key not exists!\n");
                         return NULL;
-                } 
+                }
         }
 
         /* Read data from the log entry on flash. */
@@ -139,10 +139,10 @@ static int hash_put(uint8_t *key, uint32_t offset)
         tag[0] = cuckoo_hash_lsb(key, hash_bucket_num);
         tag[1] = cuckoo_hash_msb(key, hash_bucket_num);
 
-#ifdef CUKOO_DBG
+#ifdef CUCKOO_DBG
         printf("put offset:%x t0:%x t1:%x\n", offset, tag[0], tag[1]);
-        dump_sha1_key(key);
 #endif
+        dump_sha1_key(key);
 
         /* Insert new key into hash buckets. */
         hash_slot = hash_buckets[tag[0]];
@@ -212,14 +212,12 @@ KICK_OUT:
                 }
         }
 
-#ifdef CUKOO_DBG
         show_hash_slots();
-#endif
 
         return 0;
 }
 
-int cuckoo_hash_put(uint8_t *key, uint8_t *value)
+int cuckoo_filter_put(uint8_t *key, uint8_t *value)
 {
         int i;
 
@@ -287,19 +285,20 @@ void cuckoo_rehash(void)
         }
 }
 
-int cuckoo_hash_init(void)
+int cuckoo_filter_init(size_t size)
 {
         int i;
 
         /* Whole flash memory space */
-        nvrom_base_addr = malloc(NVROM_SIZE + SECTOR_SIZE);
+        nvrom_size = next_pow_of_2(size);
+        nvrom_base_addr = malloc(nvrom_size + SECTOR_SIZE);
         if (nvrom_base_addr == NULL) {
                 return -1;
         }
         nvrom_base_addr = force_align(nvrom_base_addr, SECTOR_SIZE);
 
         /* Allocate hash slots */
-        hash_slot_num = NVROM_SIZE / SECTOR_SIZE;
+        hash_slot_num = nvrom_size / SECTOR_SIZE;
         hash_slots = calloc(hash_slot_num, sizeof(struct hash_slot_cache));
         if (hash_slots == NULL) {
                 return -1;

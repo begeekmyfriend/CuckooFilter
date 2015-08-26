@@ -2,24 +2,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+//#include <unistd.h>
+//#include <sys/types.h>
+#include <sys/stat.h>
 
-#include "cuckoo_hash.h"
+#include "cuckoo_filter.h"
 #include "mozilla-sha1/sha1.h"
-
-#define NKEY (NVROM_SIZE / SECTOR_SIZE)
 
 int main(int argc, char **argv)
 {
         SHA_CTX c;
-        uint8_t sha1_key[NKEY][20] = { { 0 } };
+        struct stat st;
+        uint32_t key_num;
+        uint8_t *keys;
+        uint8_t **sha1_key;
         uint8_t value[DAT_LEN], *v;
         int bytes, i, j;
         FILE *f1, *f2;
 
-        cuckoo_hash_init();
-
         if (argc < 3) {
-                usage("./cuckoo_hash read_file write_file");
+                fprintf(stderr, "usage: ./cuckoo_filter read_file write_file\n");
                 exit(-1);
         }
 
@@ -30,34 +32,45 @@ int main(int argc, char **argv)
         if (f1 == NULL) {
                 exit(-1);
         }
+        stat(argv[0], &st);
 
         f2 = fopen(argv[1], "wb+");
         if (f2 == NULL) {
                 exit(-1);
         }
 
+        /* Initialization */
+        cuckoo_filter_init(st.st_size);
+
+        /* Allocate SHA1 key space */
+        key_num = next_pow_of_2(st.st_size) / SECTOR_SIZE;
+        keys = malloc(key_num * 20);
+        sha1_key = malloc(key_num * sizeof(void *));
+        if (!keys || !sha1_key) {
+                exit(-1);
+        }
+        for (i = 0; i < key_num; i++) {
+                sha1_key[i] = keys + i * 20;
+        }
+
         /* Put read_file into log on flash. */
         i = 0;
         do {
-                if (i >= NKEY) {
-                        fprintf(stderr, "The size of the file exceeds the capacity of database.\n");
-                        exit(-1);
-                }
                 memset(value, 0, DAT_LEN);
                 bytes = fread(value, 1, DAT_LEN, f1);
                 SHA1_Init(&c);
                 SHA1_Update(&c, value, bytes);
                 SHA1_Final(sha1_key[i], &c);
-                if (cuckoo_hash_put(sha1_key[i], value) == -1) {
+                if (cuckoo_filter_put(sha1_key[i], value) == -1) {
                         cuckoo_rehash();
-                        cuckoo_hash_put(sha1_key[i], value);
+                        cuckoo_filter_put(sha1_key[i], value);
                 }
                 i++;
         } while (bytes == DAT_LEN);
 
         /* Get logs on flash and write them into a new file. */
         for (j = 0; j < i; j++) {
-                v = cuckoo_hash_get(sha1_key[j]);
+                v = cuckoo_filter_get(sha1_key[j]);
                 if (v != NULL) {
                         memcpy(value, v, DAT_LEN);
                         fwrite(value, 1, DAT_LEN, f2);

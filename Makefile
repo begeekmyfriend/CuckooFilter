@@ -1,7 +1,7 @@
 CFLAGS=-g -Wall
 CC=gcc
 
-PROG=cuckoo_hash
+PROG=cuckoo_filter
 
 all: $(PROG)
 
@@ -12,18 +12,18 @@ LIBS=mozilla-sha1/sha1.o
 
 LIB_H=mozilla-sha1/sha1.h
 
-OBJS=nvrom_test.o cuckoo_hash.o $(LIBS)
+OBJS=nvrom_test.o cuckoo_filter.o $(LIBS)
 
-cuckoo_hash: $(OBJS)
-	$(CC) $(CFLAGS) -o cuckoo_hash $(OBJS)
+cuckoo_filter: $(OBJS)
+	$(CC) $(CFLAGS) -o cuckoo_filter $(OBJS)
 
-nvrom_test.o: $(LIB_H) cuckoo_hash.h
+nvrom_test.o: $(LIB_H) cuckoo_filter.h
 
-cuckoo_hash.o: cuckoo_hash.h
+cuckoo_filter.o: cuckoo_filter.h
 
 .PHONY: clean
 clean:
 	rm -f *.o $(LIBS) $(PROG)
 
 backup: clean
-	cd .. ; tar jcvf cuckoo_hash.tar.bz2 cuckoo_hash
+	cd .. ; tar jcvf cuckoo_filter.tar.bz2 cuckoo_filter
