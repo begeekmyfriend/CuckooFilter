@@ -9,5 +9,5 @@ Usage
 ```c
 cd cuckoo_filter
 make
-./cockoo_filter input_file output_file
+./cockoo_db input_file output_file
 ```

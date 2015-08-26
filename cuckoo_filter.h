@@ -5,17 +5,18 @@
 #ifndef _CUCKOO_FILTER_H_
 #define _CUCKOO_FILTER_H_
 
-//#define CUCKOO_DBG
+#define CUCKOO_DBG
 
 /* Configuration */
-#define SECTOR_SIZE (1 << 10)
-#define DAT_LEN     (SECTOR_SIZE - 20)  /* minus sha1 size */
-#define ASSOC_WAY   (4)  /* 4-way association */
+#define SECTOR_SIZE    (1 << 10)
+#define DAT_LEN        (SECTOR_SIZE - 20)  /* minus sha1 size */
+#define ASSOC_WAY      (4)  /* 4-way association */
+#define INVALID_OFFSET (-1)
 
 /* Cuckoo hash */
-#define force_align(addr, size) ((void *)((((uintptr_t)(addr)) + (size) - 1) & ~((size) - 1)))
-#define cuckoo_hash_lsb(key, count)    (((size_t *)(key))[0] & (count - 1))
-#define cuckoo_hash_msb(key, count)    (((size_t *)(key))[1] & (count - 1))
+#define force_align(addr, size)  ((void *)((((uintptr_t)(addr)) + (size) - 1) & ~((size) - 1)))
+#define cuckoo_hash_lsb(key, count)  (((size_t *)(key))[0] & (count - 1))
+#define cuckoo_hash_msb(key, count)  (((size_t *)(key))[1] & (count - 1))
 
 /* Flash driver interfaces. */
 #define flash_align(addr)  (!((uintptr_t)(addr) & (SECTOR_SIZE - 1)))
@@ -69,8 +70,8 @@ next_pow_of_2(uint32_t x)
 	return x + 1;
 }
 
-int cuckoo_filter_init(size_t size);
 void cuckoo_rehash(void);
+int cuckoo_filter_init(size_t size);
 uint8_t *cuckoo_filter_get(uint8_t *key);
 int cuckoo_filter_put(uint8_t *key, uint8_t *value);
 
