@@ -341,16 +341,10 @@ static void cuckoo_rehash(struct hash_table *table)
                         key[i] = flash_read(read_addr);
                         read_addr++;
                 }
-                if (cuckoo_hash_put(table, key, &offset) == -1) {
-#ifdef CUCKOO_DBG
-                        printf("Duplicated ");
-                        dump_sha1_key(key);
-#endif
-                        fprintf(stderr, "Danger: Duplicated keys are found in "
-                                "hash table which can cause eternal hashing "
-                                "collision! So we have to terminate the program forcely!\n");
-                        exit(-1);
-                }
+                /* Duplicated keys in hash table which can cause eternal
+                 * hashing collision! Be careful of that!
+                 */
+                assert(!cuckoo_hash_put(table, key, &offset));
                 if (cuckoo_hash_get(&old_table, key, NULL) == DELETED) {
                         cuckoo_hash_delete(table, key);
                 }
@@ -384,6 +378,12 @@ void cuckoo_filter_put(uint8_t *key, uint8_t *value)
 {
         if (value != NULL) {
                 int i;
+
+                /* Important: Reject duplicated keys keeping from eternal collision */
+                if (cuckoo_hash_get(&hash_table, key, NULL) == OCCUPIED) {
+                        return;
+                }
+
                 /* Find new log entry offset on flash. */
                 uint32_t offset = next_entry_offset();
 

@@ -30,12 +30,14 @@ int main(int argc, char **argv)
 
         f1 = fopen(argv[0], "rb");
         if (f1 == NULL) {
+                fprintf(stderr, "Fail to open %s!\n", argv[0]);
                 exit(-1);
         }
         stat(argv[0], &st);
 
         f2 = fopen(argv[1], "wb+");
         if (f2 == NULL) {
+                fprintf(stderr, "Fail to open %s!\n", argv[1]);
                 exit(-1);
         }
 
@@ -47,6 +49,7 @@ int main(int argc, char **argv)
         keys = malloc(key_num * 20);
         sha1_key = malloc(key_num * sizeof(void *));
         if (!keys || !sha1_key) {
+                fprintf(stderr, "Out of memory!\n");
                 exit(-1);
         }
         for (i = 0; i < key_num; i++) {
@@ -62,7 +65,10 @@ int main(int argc, char **argv)
                 SHA1_Update(&c, value, bytes);
                 SHA1_Final(sha1_key[i], &c);
                 cuckoo_filter_put(sha1_key[i], value);
-                i++;
+                if (++i >= key_num) {
+                        fprintf(stderr, "Memory overflow!\n");
+                        exit(-1);
+                }
         } while (bytes == DAT_LEN);
 
         /* Real key number */
