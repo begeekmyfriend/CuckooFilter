@@ -7,6 +7,8 @@
 #include "cuckoo_filter.h"
 #include "mozilla-sha1/sha1.h"
 
+//#define DELETE_TEST
+
 int main(int argc, char **argv)
 {
         SHA_CTX c;
@@ -66,7 +68,10 @@ int main(int argc, char **argv)
                 i++;
         } while (bytes == DAT_LEN);
 
-#ifdef DEL_TEST
+        /* Real key number */
+        key_num = i;
+
+#ifdef DELETE_TEST
         /* Deletion test */
         for (i = 0; i < key_num; i += 2) {
                 cuckoo_filter_put(sha1_key[i], NULL);

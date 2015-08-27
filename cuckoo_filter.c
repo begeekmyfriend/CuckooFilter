@@ -58,7 +58,7 @@ static void show_hash_slots(struct hash_table *table)
                 printf("bucket[%04x]:", i);
                 struct hash_slot_cache *slot = table->buckets[i];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        printf("\t%04x/%08x", slot[j].tag, slot[j].offset);
+                        printf("\t%04x/%02x/%08x", slot[j].tag, slot[j].status, slot[j].offset);
                 }
                 printf("\n");
         }
@@ -391,8 +391,9 @@ void cuckoo_rehash(void)
                         key[i] = flash_read(read_addr);
                         read_addr++;
                 }
-                if (cuckoo_hash_get(&old_hash_table, key, &read_addr) != DELETED) {
-                        cuckoo_hash_put(&hash_table, key, &offset);
+                cuckoo_hash_put(&hash_table, key, &offset);
+                if (cuckoo_hash_get(&old_hash_table, key, &read_addr) == DELETED) {
+                        cuckoo_hash_delete(&hash_table, key);
                 }
                 read_addr += DAT_LEN;
         }
