@@ -53,12 +53,12 @@ static void show_hash_slots(struct hash_table *table)
 #ifdef CUCKOO_DBG
         int i, j;
 
-        printf("List all keys in hash table (key/value):\n");
+        printf("List all keys in hash table (tag/status/offset):\n");
         for (i = 0; i < table->bucket_num; i++) {
                 printf("bucket[%04x]:", i);
                 struct hash_slot_cache *slot = table->buckets[i];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        printf("\t%04x/%02x/%08x", slot[j].tag, slot[j].status, slot[j].offset);
+                        printf("\t%04x/%x/%08x", slot[j].tag, slot[j].status, slot[j].offset);
                 }
                 printf("\n");
         }
