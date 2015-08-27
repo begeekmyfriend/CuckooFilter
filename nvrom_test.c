@@ -61,10 +61,7 @@ int main(int argc, char **argv)
                 SHA1_Init(&c);
                 SHA1_Update(&c, value, bytes);
                 SHA1_Final(sha1_key[i], &c);
-                if (cuckoo_filter_put(sha1_key[i], value) == -1) {
-                        cuckoo_rehash();
-                        cuckoo_filter_put(sha1_key[i], value);
-                }
+                cuckoo_filter_put(sha1_key[i], value);
                 i++;
         } while (bytes == DAT_LEN);
 

@@ -28,7 +28,7 @@ static void dump_sha1_key(uint8_t *sha1)
         int i;
         static const char str[] = "0123456789abcdef";
 
-        printf("sha1: ");
+        printf("SHA1: ");
         for (i = 19; i >= 0; i--) {
                 putchar(str[sha1[i] >> 4]);
                 putchar(str[sha1[i] & 0xf]);
@@ -157,7 +157,9 @@ static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **rea
                                 offset = slot[i].offset;
                                 addr = key_verify(key, offset);
                                 if (addr != NULL) {
-                                        *read_addr = addr;
+                                        if (read_addr != NULL) {
+                                                *read_addr = addr;
+                                        }
                                         break;
                                 }
                         } else if (slot[i].status == DELETED) {
@@ -177,7 +179,9 @@ static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **rea
                                         offset = slot[j].offset;
                                         addr = key_verify(key, offset);
                                         if (addr != NULL) {
-                                                *read_addr = addr;
+                                                if (read_addr != NULL) {
+                                                        *read_addr = addr;
+                                                }
                                                 break;
                                         }
                                 } else if (slot[j].status == DELETED) {
@@ -211,7 +215,6 @@ static int cuckoo_hash_put(struct hash_table *table, uint8_t *key, uint32_t *p_o
 #ifdef CUCKOO_DBG
         printf("put offset:%x t0:%x t1:%x\n", *p_offset, tag[0], tag[1]);
 #endif
-        dump_sha1_key(key);
 
         /* Insert new key into hash buckets. */
         offset = *p_offset;
@@ -298,6 +301,66 @@ static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
         }
 }
 
+static void cuckoo_rehash(struct hash_table *table)
+{
+        int i;
+        struct hash_table old_table;
+
+        /* Reallocate hash slots */
+        old_table.slots = table->slots;
+        old_table.slot_num = table->slot_num;
+        table->slot_num *= 2;
+        table->slots = calloc(table->slot_num, sizeof(struct hash_slot_cache));
+        if (table->slots == NULL) {
+                table->slots = old_table.slots;
+                return;
+        }
+
+        /* Reallocate hash buckets associated with slots */
+        old_table.buckets = table->buckets;
+        old_table.bucket_num = table->bucket_num;
+        table->bucket_num *= 2;
+        table->buckets = malloc(table->bucket_num * sizeof(struct hash_slot_cache *));
+        if (table->buckets == NULL) {
+                free(table->slots);
+                table->slots = old_table.slots;
+                table->buckets = old_table.buckets;
+                return;
+        }
+        for (i = 0; i < table->bucket_num; i++) {
+                table->buckets[i] = &table->slots[i * ASSOC_WAY];
+        }
+
+        /* Rehash all hash slots */
+        uint8_t *read_addr = nvrom_base_addr;
+        uint32_t entries = log_entries;
+        while (entries--) {
+                uint8_t key[20];
+                uint32_t offset = read_addr - nvrom_base_addr;
+                for (i = 0; i < 20; i++) {
+                        key[i] = flash_read(read_addr);
+                        read_addr++;
+                }
+                if (cuckoo_hash_put(table, key, &offset) == -1) {
+#ifdef CUCKOO_DBG
+                        printf("Duplicated ");
+                        dump_sha1_key(key);
+#endif
+                        fprintf(stderr, "Danger: Duplicated keys are found in "
+                                "hash table which can cause eternal hashing "
+                                "collision! So we have to terminate the program forcely!\n");
+                        exit(-1);
+                }
+                if (cuckoo_hash_get(&old_table, key, NULL) == DELETED) {
+                        cuckoo_hash_delete(table, key);
+                }
+                read_addr += DAT_LEN;
+        }
+
+       free(old_table.slots);
+        free(old_table.buckets);
+}
+
 uint8_t *cuckoo_filter_get(uint8_t *key)
 {
         int i;
@@ -317,7 +380,7 @@ uint8_t *cuckoo_filter_get(uint8_t *key)
         return value;
 }
 
-int cuckoo_filter_put(uint8_t *key, uint8_t *value)
+void cuckoo_filter_put(uint8_t *key, uint8_t *value)
 {
         if (value != NULL) {
                 int i;
@@ -326,7 +389,8 @@ int cuckoo_filter_put(uint8_t *key, uint8_t *value)
 
                 /* Insert into hash slots */
                 if (cuckoo_hash_put(&hash_table, key, &offset) == -1) {
-                        return -1;
+                        cuckoo_rehash(&hash_table);
+                        cuckoo_hash_put(&hash_table, key, &offset);
                 }
 
                 /* Add new entry of key-value pair on flash. */
@@ -345,68 +409,15 @@ int cuckoo_filter_put(uint8_t *key, uint8_t *value)
         } else {
                 /* Delete at the hash slot */
                 cuckoo_hash_delete(&hash_table, key);
-                // do not do log_entries--;
+                /* do not do log_entries-- */
         }
-
-        return 0;
-}
-
-void cuckoo_rehash(void)
-{
-        int i;
-        struct hash_table old_hash_table;
-
-        /* Reallocate hash slots */
-        old_hash_table.slots = hash_table.slots;
-        old_hash_table.slot_num = hash_table.slot_num;
-        hash_table.slot_num *= 2;
-        hash_table.slots = calloc(hash_table.slot_num, sizeof(struct hash_slot_cache));
-        if (hash_table.slots == NULL) {
-                hash_table.slots = old_hash_table.slots;
-                return;
-        }
-
-        /* Reallocate hash buckets associated with slots */
-        old_hash_table.buckets = hash_table.buckets;
-        old_hash_table.bucket_num = hash_table.bucket_num;
-        hash_table.bucket_num *= 2;
-        hash_table.buckets = malloc(hash_table.bucket_num * sizeof(struct hash_slot_cache *));
-        if (hash_table.buckets == NULL) {
-                free(hash_table.slots);
-                hash_table.slots = old_hash_table.slots;
-                hash_table.buckets = old_hash_table.buckets;
-                return;
-        }
-        for (i = 0; i < hash_table.bucket_num; i++) {
-                hash_table.buckets[i] = &hash_table.slots[i * ASSOC_WAY];
-        }
-
-        /* Rehash all hash slots */
-        uint8_t *read_addr = nvrom_base_addr;
-        uint32_t entries = log_entries;
-        while (entries--) {
-                uint8_t key[20];
-                uint32_t offset = read_addr - nvrom_base_addr;
-                for (i = 0; i < 20; i++) {
-                        key[i] = flash_read(read_addr);
-                        read_addr++;
-                }
-                cuckoo_hash_put(&hash_table, key, &offset);
-                if (cuckoo_hash_get(&old_hash_table, key, &read_addr) == DELETED) {
-                        cuckoo_hash_delete(&hash_table, key);
-                }
-                read_addr += DAT_LEN;
-        }
-
-        free(old_hash_table.slots);
-        free(old_hash_table.buckets);
 }
 
 int cuckoo_filter_init(size_t size)
 {
         int i;
 
-        /* Whole flash memory space */
+        /* Make whole memory space large enough(but not always predictable...) */
         nvrom_size = next_pow_of_2(size);
         nvrom_base_addr = malloc(nvrom_size + SECTOR_SIZE);
         if (nvrom_base_addr == NULL) {
@@ -416,14 +427,8 @@ int cuckoo_filter_init(size_t size)
 
         /* Allocate hash slots */
         hash_table.slot_num = nvrom_size / SECTOR_SIZE;
-        /* Make rehash happen */
-        if (hash_table.slot_num >= 4) {
-                hash_table.slot_num /= 4;
-        } else if (hash_table.slot_num >= 2) {
-                hash_table.slot_num /= 2;
-        } else {
-                hash_table.slot_num = hash_table.slot_num;
-        }
+        /* Make rehashing happen */
+        hash_table.slot_num /= 4;
         hash_table.slots = calloc(hash_table.slot_num, sizeof(struct hash_slot_cache));
         if (hash_table.slots == NULL) {
                 return -1;

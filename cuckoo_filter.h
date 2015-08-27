@@ -70,9 +70,8 @@ next_pow_of_2(uint32_t x)
 	return x + 1;
 }
 
-void cuckoo_rehash(void);
 int cuckoo_filter_init(size_t size);
 uint8_t *cuckoo_filter_get(uint8_t *key);
-int cuckoo_filter_put(uint8_t *key, uint8_t *value);
+void cuckoo_filter_put(uint8_t *key, uint8_t *value);
 
 #endif /* _CUCKOO_FILTER_H_ */
