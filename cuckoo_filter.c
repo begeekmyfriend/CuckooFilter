@@ -352,7 +352,7 @@ static void cuckoo_rehash(struct hash_table *table)
         }
 
        free(old_table.slots);
-        free(old_table.buckets);
+       free(old_table.buckets);
 }
 
 uint8_t *cuckoo_filter_get(uint8_t *key)
@@ -391,6 +391,10 @@ void cuckoo_filter_put(uint8_t *key, uint8_t *value)
                 if (cuckoo_hash_put(&hash_table, key, &offset) == -1) {
                         cuckoo_rehash(&hash_table);
                         cuckoo_hash_put(&hash_table, key, &offset);
+                }
+                if (offset == -1) {
+                        fprintf(stderr, "Not enough capacity!\n");
+                        return;
                 }
 
                 /* Add new entry of key-value pair on flash. */
