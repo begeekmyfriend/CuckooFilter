@@ -113,7 +113,7 @@ KICK_OUT:
         }
 
         if (j == ASSOC_WAY) {
-                if (++alt_cnt > 128) {
+                if (++alt_cnt > 512) {
                         if (k == ASSOC_WAY - 1) {
                                 /* Hash table is almost full and needs to be resized */
                                 return 1;
