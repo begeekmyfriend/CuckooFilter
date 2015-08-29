@@ -422,7 +422,7 @@ int cuckoo_filter_init(size_t size)
         int i;
 
         /* Make whole memory space large enough(but not always predictable...) */
-        nvrom_size = next_pow_of_2(size);
+        nvrom_size = next_pow_of_2((size / DAT_LEN + 1) * SECTOR_SIZE);
         nvrom_base_addr = malloc(nvrom_size + SECTOR_SIZE);
         if (nvrom_base_addr == NULL) {
                 return -1;

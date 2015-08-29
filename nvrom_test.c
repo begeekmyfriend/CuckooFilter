@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         cuckoo_filter_init(st.st_size);
 
         /* Allocate SHA1 key space */
-        key_num = next_pow_of_2(st.st_size) / SECTOR_SIZE;
+        key_num = next_pow_of_2(st.st_size) / DAT_LEN;
         keys = malloc(key_num * 20);
         sha1_key = malloc(key_num * sizeof(void *));
         if (!keys || !sha1_key) {
@@ -65,10 +65,7 @@ int main(int argc, char **argv)
                 SHA1_Update(&c, value, bytes);
                 SHA1_Final(sha1_key[i], &c);
                 cuckoo_filter_put(sha1_key[i], value);
-                if (++i >= key_num) {
-                        fprintf(stderr, "Memory overflow!\n");
-                        exit(-1);
-                }
+                i++;
         } while (bytes == DAT_LEN);
 
         /* Real key number */

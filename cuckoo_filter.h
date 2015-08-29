@@ -8,7 +8,7 @@
 //#define CUCKOO_DBG
 
 /* Configuration */
-#define SECTOR_SIZE    (1 << 10)
+#define SECTOR_SIZE    (1 << 6)
 #define DAT_LEN        (SECTOR_SIZE - 20)  /* minus sha1 size */
 #define ASSOC_WAY      (4)  /* 4-way association */
 #define INVALID_OFFSET (-1)
