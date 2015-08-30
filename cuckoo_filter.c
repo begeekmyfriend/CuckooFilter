@@ -273,7 +273,7 @@ static void cuckoo_hash_status_set(struct hash_table *table, uint8_t *key, int s
         tag[1] = cuckoo_hash_msb(key, table->bucket_num);
 
 #ifdef CUCKOO_DBG
-        printf("delete t0:%x t1:%x\n", tag[0], tag[1]);
+        printf("set status:%d t0:%x t1:%x\n", status, tag[0], tag[1]);
 #endif
         dump_sha1_key(key);
 
@@ -296,7 +296,9 @@ static void cuckoo_hash_status_set(struct hash_table *table, uint8_t *key, int s
                 }
 
                 if (j == ASSOC_WAY) {
+#ifdef CUCKOO_DBG
                         printf("Key not exists!\n");
+#endif
                 }
         }
 }

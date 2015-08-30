@@ -68,6 +68,7 @@ int main(int argc, char **argv)
 
         /* Real key number */
         key_num = i;
+        printf("Total %u records.\n", key_num);
 
         /* Deletion test */
         for (i = 0; i < key_num; i += 2) {
