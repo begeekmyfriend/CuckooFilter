@@ -264,7 +264,7 @@ static int cuckoo_hash_put(struct hash_table *table, uint8_t *key, uint32_t *p_o
         return 0;
 }
 
-static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
+static void cuckoo_hash_status_set(struct hash_table *table, uint8_t *key, int status)
 {
         uint32_t i, j, tag[2];
         struct hash_slot_cache *slot;
@@ -281,7 +281,7 @@ static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
         slot = table->buckets[tag[0]];
         for (i = 0; i < ASSOC_WAY; i++) {
                 if (cuckoo_hash_msb(key, table->bucket_num) == slot[i].tag) {
-                        slot[i].status = DELETED;
+                        slot[i].status = status;
                         return;
                 }
         }
@@ -290,7 +290,7 @@ static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
                 slot = table->buckets[tag[1]];
                 for (j = 0; j < ASSOC_WAY; j++) {
                         if (cuckoo_hash_lsb(key, table->bucket_num) == slot[j].tag) {
-                                slot[j].status = DELETED;
+                                slot[j].status = status;
                                 return;
                         }
                 }
@@ -299,6 +299,16 @@ static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
                         printf("Key not exists!\n");
                 }
         }
+}
+
+static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
+{
+        cuckoo_hash_status_set(table, key, DELETED);
+}
+
+static void cuckoo_hash_recover(struct hash_table *table, uint8_t *key)
+{
+        cuckoo_hash_status_set(table, key, OCCUPIED);
 }
 
 static void cuckoo_rehash(struct hash_table *table)
@@ -377,43 +387,44 @@ uint8_t *cuckoo_filter_get(uint8_t *key)
 void cuckoo_filter_put(uint8_t *key, uint8_t *value)
 {
         if (value != NULL) {
-                int i;
-
                 /* Important: Reject duplicated keys keeping from eternal collision */
-                if (cuckoo_hash_get(&hash_table, key, NULL) == OCCUPIED) {
+                int status = cuckoo_hash_get(&hash_table, key, NULL);
+                if (status == OCCUPIED) {
                         return;
-                }
+                } else if (status == DELETED) {
+                        cuckoo_hash_recover(&hash_table, key);
+                } else {
+                        /* Find new log entry offset on flash. */
+                        uint32_t offset = next_entry_offset();
 
-                /* Find new log entry offset on flash. */
-                uint32_t offset = next_entry_offset();
+                        /* Insert into hash slots */
+                        if (cuckoo_hash_put(&hash_table, key, &offset) == -1) {
+                                cuckoo_rehash(&hash_table);
+                                cuckoo_hash_put(&hash_table, key, &offset);
+                        }
+                        if (offset == -1) {
+                                fprintf(stderr, "Not enough capacity!\n");
+                                return;
+                        }
 
-                /* Insert into hash slots */
-                if (cuckoo_hash_put(&hash_table, key, &offset) == -1) {
-                        cuckoo_rehash(&hash_table);
-                        cuckoo_hash_put(&hash_table, key, &offset);
+                        /* Add new entry of key-value pair on flash. */
+                        int i;
+                        uint8_t *append_addr = nvrom_base_addr + offset;
+                        assert(flash_align(append_addr));
+                        flash_sector_erase(append_addr);
+                        for (i = 0; i < 20; i++) {
+                                flash_write(append_addr, key[i]);
+                                append_addr++;
+                        }
+                        for (i = 0; i < DAT_LEN; i++) {
+                                flash_write(append_addr, value[i]);
+                                append_addr++;
+                        }
+                        log_entries++;
                 }
-                if (offset == -1) {
-                        fprintf(stderr, "Not enough capacity!\n");
-                        return;
-                }
-
-                /* Add new entry of key-value pair on flash. */
-                uint8_t *append_addr = nvrom_base_addr + offset;
-                assert(flash_align(append_addr));
-                flash_sector_erase(append_addr);
-                for (i = 0; i < 20; i++) {
-                        flash_write(append_addr, key[i]);
-                        append_addr++;
-                }
-                for (i = 0; i < DAT_LEN; i++) {
-                        flash_write(append_addr, value[i]);
-                        append_addr++;
-                }
-                log_entries++;
         } else {
                 /* Delete at the hash slot */
                 cuckoo_hash_delete(&hash_table, key);
-                /* do not do log_entries-- */
         }
 }
 

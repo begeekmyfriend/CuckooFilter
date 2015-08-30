@@ -1,7 +1,7 @@
 Cuckoo Filter
 =============
 
-A mini key-value storage filter on flash memory using cuckoo hashing.
+A key-value filter using cuckoo hashing, substituting for bloom filter.
 
 Usage
 -----
@@ -13,5 +13,3 @@ make
 ```
 
 Define `CUCKOO_DBG` in cuckoo_filter.h to open debug logging.
-
-Define `DEL_TEST` in nvrom_test.c to open deletion test.

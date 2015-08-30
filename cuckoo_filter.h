@@ -33,7 +33,7 @@
         } while (0)
 
 /* The log entries store key-value pairs on flash and
- * the size of each entry is assumed to just fit one sector size (4K bits).
+ * each entry is assumed just one sector size fit.
  */
 struct log_entry {
         uint8_t sha1[20];
@@ -42,8 +42,8 @@ struct log_entry {
 
 enum { AVAILIBLE, OCCUPIED, DELETED, };
 
-/* The in-memory hash bucket cache is to filter keys (which is assumed SHA1) via
- * cuckoo hash function and map keys to log entries stored on flash.
+/* The in-memory hash buckets cache filter keys (which are assumed SHA1 values)
+ * via cuckoo hashing function and map them to log entries stored on flash.
  */
 struct hash_slot_cache {
         uint32_t tag : 30;  /* summary of key */
@@ -51,14 +51,12 @@ struct hash_slot_cache {
         uint32_t offset;  /* offset on flash memory */
 };
 
-static inline int
-is_pow_of_2(uint32_t x)
+static inline int is_pow_of_2(uint32_t x)
 {
 	return !(x & (x-1));
 }
 
-static inline uint32_t
-next_pow_of_2(uint32_t x)
+static inline uint32_t next_pow_of_2(uint32_t x)
 {
 	if (is_pow_of_2(x))
 		return x;
