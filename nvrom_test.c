@@ -94,5 +94,8 @@ int main(int argc, char **argv)
         fclose(f1);
         fclose(f2);
 
+        free(keys);
+        free(sha1_key);
+
         return 0;
 }
