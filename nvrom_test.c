@@ -74,6 +74,8 @@ int main(int argc, char **argv)
         for (i = 0; i < key_num; i += 2) {
                 cuckoo_filter_put(sha1_key[i], NULL);
         }
+
+        fseek(f1, 0, SEEK_SET);
         for (i = 0; i < key_num; i++) {
                 memset(value, 0, DAT_LEN);
                 bytes = fread(value, 1, DAT_LEN, f1);
