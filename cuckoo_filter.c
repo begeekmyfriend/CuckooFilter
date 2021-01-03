@@ -152,7 +152,7 @@ static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **rea
         /* Filter the key and verify if it exists. */
         slot = table->buckets[tag[0]];
         for (i = 0; i < ASSOC_WAY; i++) {
-                if (cuckoo_hash_msb(key, table->bucket_num) == slot[i].tag) {
+                if (tag[1] == slot[i].tag) {
                         if (slot[i].status == OCCUPIED) {
                                 offset = slot[i].offset;
                                 addr = key_verify(key, offset);
@@ -174,7 +174,7 @@ static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **rea
         if (i == ASSOC_WAY) {
                 slot = table->buckets[tag[1]];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        if (cuckoo_hash_lsb(key, table->bucket_num) == slot[j].tag) {
+                        if (tag[0] == slot[j].tag) {
                                 if (slot[j].status == OCCUPIED) {
                                         offset = slot[j].offset;
                                         addr = key_verify(key, offset);
@@ -206,7 +206,7 @@ static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **rea
 static int cuckoo_hash_put(struct hash_table *table, uint8_t *key, uint32_t *p_offset)
 {
         int i, j;
-        uint32_t tag[2], offset;
+        uint32_t tag[2];
         struct hash_slot_cache *slot;
 
         tag[0] = cuckoo_hash_lsb(key, table->bucket_num);
@@ -217,18 +217,17 @@ static int cuckoo_hash_put(struct hash_table *table, uint8_t *key, uint32_t *p_o
 #endif
 
         /* Insert new key into hash buckets. */
-        offset = *p_offset;
         slot = table->buckets[tag[0]];
         for (i = 0; i < ASSOC_WAY; i++) {
-                if (offset == INVALID_OFFSET && slot[i].status == DELETED) {
+                if (*p_offset == INVALID_OFFSET && slot[i].status == DELETED) {
                         slot[i].status = OCCUPIED;
-                        slot[i].tag = cuckoo_hash_msb(key, table->bucket_num);
-                        *p_offset = offset = slot[i].offset;
+                        slot[i].tag = tag[1];
+                        *p_offset = slot[i].offset;
                         break;
                 } else if (slot[i].status == AVAILIBLE) {
                         slot[i].status = OCCUPIED;
-                        slot[i].tag = cuckoo_hash_msb(key, table->bucket_num);
-                        slot[i].offset = offset;
+                        slot[i].tag = tag[1];
+                        slot[i].offset = *p_offset;
                         break;
                 }
         }
@@ -236,15 +235,15 @@ static int cuckoo_hash_put(struct hash_table *table, uint8_t *key, uint32_t *p_o
         if (i == ASSOC_WAY) {
                 slot = table->buckets[tag[1]];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        if (offset == INVALID_OFFSET && slot[j].status == DELETED) {
+                        if (*p_offset == INVALID_OFFSET && slot[j].status == DELETED) {
                                 slot[j].status = OCCUPIED;
-                                slot[j].tag = cuckoo_hash_lsb(key, table->bucket_num);
-                                *p_offset = offset = slot[j].offset;
+                                slot[j].tag = tag[0];
+                                *p_offset = slot[j].offset;
                                 break;
                         } else if (slot[j].status == AVAILIBLE) {
                                 slot[j].status = OCCUPIED;
-                                slot[j].tag = cuckoo_hash_lsb(key, table->bucket_num);
-                                slot[j].offset = offset;
+                                slot[j].tag = tag[0];
+                                slot[j].offset = *p_offset;
                                 break;
                         }
                 }
@@ -280,7 +279,7 @@ static void cuckoo_hash_status_set(struct hash_table *table, uint8_t *key, int s
         /* Insert new key into hash buckets. */
         slot = table->buckets[tag[0]];
         for (i = 0; i < ASSOC_WAY; i++) {
-                if (cuckoo_hash_msb(key, table->bucket_num) == slot[i].tag) {
+                if (tag[1] == slot[i].tag) {
                         slot[i].status = status;
                         return;
                 }
@@ -289,7 +288,7 @@ static void cuckoo_hash_status_set(struct hash_table *table, uint8_t *key, int s
         if (i == ASSOC_WAY) {
                 slot = table->buckets[tag[1]];
                 for (j = 0; j < ASSOC_WAY; j++) {
-                        if (cuckoo_hash_lsb(key, table->bucket_num) == slot[j].tag) {
+                        if (tag[0] == slot[j].tag) {
                                 slot[j].status = status;
                                 return;
                         }
